@@ -1,8 +1,11 @@
 // Exemplo de uso da Multi Function Shield - Display
 // DQ, dez/2016
 // http://dqsoft.blogspot.com
-
-#include<TimerOne.h>
+//
+// Retirado uso da lib TimerOne - Marcelo Campos - Jun/18
+//
+//#include<TimerOne.h>
+#define TEMPO_ATUALIZACAO  33
 
 const int pinLatch = 4;
 const int pinClock = 7;
@@ -23,44 +26,56 @@ uint8_t valor[4];
 
 // Inicia��o
 void setup() {
+  Serial.begin(9600);
   // Inicia os pinos ligados ao display
   pinMode (pinLatch, OUTPUT);
   pinMode (pinClock, OUTPUT);
   pinMode (pinDado, OUTPUT);
-  
+ 
   // Inicia o timer
-  Timer1.initialize(2000); // 2 ms
-  Timer1.attachInterrupt (timerIsr);
+//  Timer1.initialize(2000); // 2 ms
+//  Timer1.attachInterrupt (timerIsr);
 }
 
 // Programa principal
-void loop() {
-    static uint8_t cont = 0;
-    
-    // mudar cada digito do valor com um ritmo diferente
-    cli();
-    if (++valor[3] > 9) {
-        valor[3] = 0;
-    }
-    if (((cont & 0x03) == 0) && (++valor[2] > 9)) {
-        valor[2] = 0;
-    }
-    if (((cont & 0x0F) == 0) && (++valor[1] > 9)) {
-        valor[1] = 0;
-    }
-    if (((cont & 0x03F) == 0) && (++valor[0] > 9)) {
-        valor[0] = 0;
-    }
-    sei();
+void loop()
+{
+  static int cont = 0;
+  static int TEMPO_CONTAGEM = 200;
+  static int ultimaContagem = 0;
  
-    cont++;
-    delay (100);
+  while (1)
+  { 
+    if(millis() - ultimaContagem >= TEMPO_CONTAGEM)
+    {
+      cont++;
+      ultimaContagem = millis();
+             
+      valor[0] = cont / 1000;
+      valor[1] = (cont % 1000)/100;
+      valor[2] = ((cont % 1000)%100) /10;
+      valor[3] = ((cont % 1000)%100) % 10;
+    }
+ 
+    AtualizaDisplays();
+  }
+
 }
 
-// Interrup��o do timer, atualiza o display a cada 2 ms
+void AtualizaDisplays()
+{
+  static unsigned long ultimaAtualizacao = millis();
+ 
+  if(millis() - ultimaAtualizacao >= TEMPO_ATUALIZACAO )
+  {
+   timerIsr();
+  }
+}
+
+// atualiza o display a cada TEMPO_ATUALIZACAO ms
 void timerIsr() {
   static uint8_t iDig = 0;
-  
+ 
   digitalWrite(pinLatch, LOW);
   shiftOut(pinDado, pinClock, MSBFIRST, numero[valor[iDig]]);
   shiftOut(pinDado, pinClock, MSBFIRST, digito[iDig]);
